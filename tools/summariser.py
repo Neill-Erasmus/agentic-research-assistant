@@ -122,6 +122,8 @@ def _normalise_to_bullets(text: str, max_sentences: int) -> str:
         key = re.sub(r'[^a-z0-9 ]', '', line.lower())
         if key in seen:
             continue
+        if any(is_similar(sentence, existing) for existing in unique_selected):
+            continue
         seen.add(key)
         unique.append(_clip_words(line, MAX_WORDS_PER_BULLET))
         if len(unique) >= max_sentences:
