@@ -17,8 +17,10 @@ def main():
         if not query:
             continue
 
-        # Execute the research pipeline
-        report = orchestrator.run(query)
+        try:
+            report = orchestrator.run(query)
+        except Exception as exc:
+            report = f'Unexpected runtime error: {exc}'
 
         print('\n' + '=' * 50)
         print(report)
