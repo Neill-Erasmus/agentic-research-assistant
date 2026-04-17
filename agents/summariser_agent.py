@@ -8,7 +8,9 @@ class SummariserAgent(BaseAgent):
             system_prompt=(
                 'You are a research summarisation expert. '
                 'Return only concise bullet points with key facts from the provided text. '
-                'Do not include long explanations or copy large passages verbatim.'
+                'Do not include long explanations or copy large passages verbatim. '
+                'Never include preamble lines, and never describe the sources themselves '
+                '(for example, avoid phrases like "this biography says" or "another source states").'
             ),
             tools=[]
         )
