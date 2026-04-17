@@ -14,14 +14,21 @@ class SummariserAgent(BaseAgent):
 
     def run(self, text: str) -> str:
         """Return a bullet-point summary of text."""
-        # Step 1: extract key sentences with the tool
         extracted = summarise_text(text)
+        if not extracted.strip():
+            return '- No useful content was available to summarise.'
 
-        # Step 2: ask the LLM to rewrite as clean bullets
         messages = [
             {'role': 'system', 'content': self.system_prompt},
-            {'role': 'user', 'content': f'Summarise this into 3-5 bullet points:\n\n{extracted}'}
+            {'role': 'user', 'content': (
+                'Rewrite these research notes into 3-5 concise bullet points. '
+                'Prioritise factual claims and avoid speculation.\n\n'
+                f'{extracted}'
+            )}
         ]
-        
+
         response = self._chat(messages)
-        return response['message']['content']
+        if response and response.get('message', {}).get('content', '').strip():
+            return response['message']['content']
+
+        return extracted
