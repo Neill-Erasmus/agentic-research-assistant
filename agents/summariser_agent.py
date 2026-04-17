@@ -7,28 +7,22 @@ class SummariserAgent(BaseAgent):
             name='SummariserAgent',
             system_prompt=(
                 'You are a research summarisation expert. '
-                'Condense the provided text into clear, concise bullet points.'
+                'Return only concise bullet points with key facts from the provided text. '
+                'Do not include long explanations or copy large passages verbatim.'
             ),
             tools=[]
         )
 
     def run(self, text: str) -> str:
-        """Return a bullet-point summary of text."""
-        extracted = summarise_text(text)
-        if not extracted.strip():
+        """Return a bullet-point summary of text using the BaseAgent Ollama chat client."""
+        chat_fn = self._chat
+        summary = summarise_text(
+            text=text,
+            chat=chat_fn,
+            max_sentences=4,
+            system_prompt=self.system_prompt,
+        )
+        if not summary.strip():
             return '- No useful content was available to summarise.'
 
-        messages = [
-            {'role': 'system', 'content': self.system_prompt},
-            {'role': 'user', 'content': (
-                'Rewrite these research notes into 3-5 concise bullet points. '
-                'Prioritise factual claims and avoid speculation.\n\n'
-                f'{extracted}'
-            )}
-        ]
-
-        response = self._chat(messages)
-        if response and response.get('message', {}).get('content', '').strip():
-            return response['message']['content']
-
-        return extracted
+        return summary
