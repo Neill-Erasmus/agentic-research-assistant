@@ -18,18 +18,40 @@ class ResearchOrchestrator:
         print(f'Orchestrator received query: "{query}"\n')
 
         print('[Step 1] Dispatching SearchAgent...')
-        results = self.search_agent.run(query)
+        try:
+            results = self.search_agent.run(query)
+        except Exception as exc:
+            return f'Research pipeline failed during search: {exc}'
+
         if not results:
-            return 'No results found. Try a different query.'
+            return 'No results found. Try a different query or check your network connection.'
         print(f' Found {len(results)} results.\n')
 
         print('[Step 2] Dispatching SummariserAgent...')
-        combined_text = ' '.join(r.get('snippet', '') for r in results)
-        summary = self.summariser_agent.run(combined_text)
+        source_blocks = []
+        for idx, result in enumerate(results, 1):
+            snippet = (result.get('snippet') or '').strip()
+            if not snippet:
+                continue
+            if snippet[-1] not in '.!?':
+                snippet += '.'
+            source_blocks.append(f'Source {idx}: {snippet}')
+
+        combined_text = '\n\n'.join(source_blocks)
+        if not combined_text.strip():
+            combined_text = '\n'.join(r.get('title', '') for r in results)
+
+        try:
+            summary = self.summariser_agent.run(combined_text)
+        except Exception as exc:
+            summary = f'- Summary generation failed: {exc}'
         print(' Summary complete.\n')
 
         print('[Step 3] Dispatching CitationAgent...')
-        citations = self.citation_agent.run(results)
+        try:
+            citations = self.citation_agent.run(results)
+        except Exception as exc:
+            citations = [f'Citation generation failed: {exc}']
         print(' Citations formatted.\n')
 
         report = self._compile_report(query, summary, citations)
