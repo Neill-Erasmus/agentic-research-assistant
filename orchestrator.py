@@ -9,6 +9,18 @@ from agents.citation_agent import CitationAgent
 
 class ResearchOrchestrator:
     DEFAULT_AGENT_PLAN = ['SearchAgent', 'SummariserAgent', 'FactCheckerAgent', 'CitationAgent']
+    ORDINAL_RESULT_INDEX = {
+        'first': 0,
+        'second': 1,
+        'third': 2,
+        'fourth': 3,
+        'fifth': 4,
+        'sixth': 5,
+        'seventh': 6,
+        'eighth': 7,
+        'ninth': 8,
+        'tenth': 9,
+    }
 
     def __init__(self):
         print('Initialising agents...')
@@ -21,16 +33,19 @@ class ResearchOrchestrator:
             system_prompt='You are an orchestration planner for a multi-agent research assistant.',
             tools=[]
         )
+        self.session_memory: list[dict] = []
         print('All agents ready.\n')
 
     def run(self, query: str) -> str:
         print(f'Orchestrator received query: "{query}"\n')
 
-        plan = self._plan_agents(query)
+        effective_query, seeded_results = self._resolve_query_with_memory(query)
+
+        plan = self._plan_agents(effective_query)
         plan = self._ensure_citation_if_search_used(plan)
         print(f' Planned agent sequence: {", ".join(plan)}\n')
 
-        results: list[dict] = []
+        results: list[dict] = [dict(item) for item in seeded_results]
         summary = '- Not requested by orchestration plan.'
         fact_check = '- Not requested by orchestration plan.'
         citations = ['Not requested by orchestration plan.']
@@ -40,14 +55,18 @@ class ResearchOrchestrator:
 
             if agent_name == 'SearchAgent':
                 try:
-                    results = self.search_agent.run(query)
+                    results = self.search_agent.run(effective_query)
                 except Exception as exc:
                     return f'Research pipeline failed during search: {exc}'
 
                 if results:
                     print(f' Found {len(results)} results.\n')
                 else:
-                    print(' No results found.\n')
+                    if seeded_results:
+                        results = [dict(item) for item in seeded_results]
+                        print(' No fresh results found. Reusing referenced prior result from session memory.\n')
+                    else:
+                        print(' No results found.\n')
                 continue
 
             if agent_name == 'SummariserAgent':
@@ -89,8 +108,107 @@ class ResearchOrchestrator:
                     citations = [f'Citation generation failed: {exc}']
                 print(' Citations formatted.\n')
 
+        self._remember_run(
+            query=query,
+            effective_query=effective_query,
+            plan=plan,
+            results=results,
+            summary=summary,
+            fact_check=fact_check,
+            citations=citations,
+        )
+
         report = self._compile_report(query, plan, summary, fact_check, citations)
         return report
+
+    def _resolve_query_with_memory(self, query: str) -> tuple[str, list[dict]]:
+        result_index = self._extract_referenced_result_index(query)
+        if result_index is None:
+            return query, []
+
+        previous_entry = self._latest_memory_entry_with_results()
+        if not previous_entry:
+            print(' [Memory] Follow-up detected, but there are no prior results in this session yet.')
+            return query, []
+
+        previous_results = previous_entry.get('results') or []
+        if result_index < 0 or result_index >= len(previous_results):
+            print(
+                f' [Memory] Follow-up asked for result {result_index + 1}, '
+                f'but only {len(previous_results)} result(s) are available from the latest memory entry.'
+            )
+            return query, []
+
+        selected_result = dict(previous_results[result_index])
+        resolved_query = self._build_query_from_result(query, selected_result)
+        source_query = previous_entry.get('query', 'previous query')
+        title = (selected_result.get('title') or 'Untitled').strip()
+        print(
+            f' [Memory] Follow-up matched result {result_index + 1} '
+            f'from "{source_query}": {title}.\n'
+        )
+        return resolved_query, [selected_result]
+
+    def _extract_referenced_result_index(self, query: str) -> int | None:
+        lowered = query.lower()
+
+        numbered_patterns = (
+            r'\b(?:result|source)\s*(?:number\s*)?#?\s*(\d+)(?:st|nd|rd|th)?\b',
+            r'\b(\d+)(?:st|nd|rd|th)\s+(?:result|source)\b',
+        )
+        for pattern in numbered_patterns:
+            match = re.search(pattern, lowered)
+            if match:
+                return max(0, int(match.group(1)) - 1)
+
+        for word, index in self.ORDINAL_RESULT_INDEX.items():
+            if re.search(rf'\b{word}\s+(?:result|source)\b', lowered):
+                return index
+            if re.search(rf'\b(?:result|source)\s+{word}\b', lowered):
+                return index
+
+        return None
+
+    def _latest_memory_entry_with_results(self) -> dict | None:
+        for entry in reversed(self.session_memory):
+            if entry.get('results'):
+                return entry
+        return None
+
+    def _build_query_from_result(self, original_query: str, result: dict) -> str:
+        title = (result.get('title') or '').strip()
+        snippet = (result.get('snippet') or '').strip()
+        url = (result.get('url') or '').strip()
+
+        query_parts = [title]
+        if snippet:
+            query_parts.append(snippet[:220])
+        if url:
+            query_parts.append(url)
+
+        resolved_query = ' '.join(part for part in query_parts if part).strip()
+        return resolved_query or original_query
+
+    def _remember_run(
+        self,
+        query: str,
+        effective_query: str,
+        plan: list[str],
+        results: list[dict],
+        summary: str,
+        fact_check: str,
+        citations: list[str],
+    ) -> None:
+        memory_entry = {
+            'query': query,
+            'effective_query': effective_query,
+            'plan': plan.copy(),
+            'results': [dict(item) for item in results],
+            'summary': summary,
+            'fact_check': fact_check,
+            'citations': list(citations),
+        }
+        self.session_memory.append(memory_entry)
 
     def _plan_agents(self, query: str) -> list[str]:
         plan_messages = [
