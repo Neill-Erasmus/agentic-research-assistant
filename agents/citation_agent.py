@@ -24,7 +24,7 @@ class CitationAgent(BaseAgent):
             tools=[]
         )
 
-    def run(self : CitationAgent, results: list[dict]) -> list[str]:
+    def run(self, results: list[dict]) -> list[str]:
         """
         Format a list of search results into APA-style citations.
 

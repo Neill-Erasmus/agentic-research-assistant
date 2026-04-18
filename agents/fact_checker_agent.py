@@ -24,7 +24,7 @@ class FactCheckerAgent(BaseAgent):
             tools=[]
         )
 
-    def run(self : FactCheckerAgent, summary: str) -> str:
+    def run(self, summary: str) -> str:
         """
         Review a summary and identify potential factual concerns.
 

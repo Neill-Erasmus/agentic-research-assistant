@@ -29,7 +29,7 @@ class BaseAgent:
     Subclasses can implement specific agents with their own prompts and tools by inheriting from this base class.
     """    
     
-    def __init__(self : BaseAgent, name : str, system_prompt : str, tools : list[dict]) -> None:
+    def __init__(self, name : str, system_prompt : str, tools : list[dict]) -> None:
         """
         Initialize the base agent.
 
@@ -44,7 +44,7 @@ class BaseAgent:
         self.tools = tools
         self._http = requests.Session()
 
-    def _chat(self : BaseAgent, messages: list[dict]) -> dict | None:
+    def _chat(self, messages: list[dict]) -> dict | None:
         """
         Send messages to Ollama and return the response dict, or None on failure.
 
@@ -83,7 +83,7 @@ class BaseAgent:
             print(f' [{self.name}] Ollama returned non-JSON response.')
             return None
 
-    def _build_tool_prompt(self : BaseAgent) -> str:
+    def _build_tool_prompt(self) -> str:
         """
         Build a prompt section describing the available tools and how to call them.
 
@@ -107,7 +107,7 @@ class BaseAgent:
             lines.append(f'   Parameters: {t["params"]}')
         return '\n'.join(lines)
 
-    def _parse_tool_call(self : BaseAgent, text: str) -> dict | None:
+    def _parse_tool_call(self, text: str) -> dict | None:
         """
         Parse a tool call from the agent's response text. The expected format is a JSON object with "tool" and "args" keys, optionally wrapped in markdown code fences.
 
