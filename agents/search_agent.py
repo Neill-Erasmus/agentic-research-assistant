@@ -11,7 +11,19 @@ TOOLS = [
 ]
 
 class SearchAgent(BaseAgent):
-    def __init__(self):
+    """
+    An agent that formulates search queries and calls a web search tool.
+
+    Args:
+        BaseAgent (_type_): The base agent class that provides common functionality for all agents, including the chat interface.
+    """    
+    
+    def __init__(self) -> None:
+        """
+        Initialize the SearchAgent with a system prompt that instructs it to formulate search queries and call the web_search tool.
+        The prompt includes a description of the available tools and how to call them.
+        """        
+        
         super().__init__(
             name='SearchAgent',
             system_prompt=(
@@ -22,7 +34,18 @@ class SearchAgent(BaseAgent):
             tools=TOOLS
         )
 
-    def _build_tool_prompt_static(self, tools):
+    def _build_tool_prompt_static(self : SearchAgent, tools : list[dict]) -> str:
+        """
+        Build a static part of the system prompt that describes the available tools.
+
+        Args:
+            self (SearchAgent): The instance of the SearchAgent class.
+            tools (list[dict]): A list of tool descriptions, where each tool is a dict with 'name', 'description', and 'params' keys.
+
+        Returns:
+            str: A string containing the static part of the system prompt describing the available tools.
+        """                
+        
         lines = [
             '\n\nYou have access to the following tools.',
             'To call a tool, respond ONLY with valid JSON:',
@@ -33,8 +56,18 @@ class SearchAgent(BaseAgent):
             lines.append(f' - {t["name"]}: {t["description"]}')
         return '\n'.join(lines)
 
-    def _normalise_topic(self, topic: str) -> str:
-        """Clean common instruction phrasing so search terms stay focused."""
+    def _normalise_topic(self : SearchAgent, topic : str) -> str:
+        """
+        Normalise the research topic by stripping common prefixes and suffixes, and simplifying certain patterns.
+
+        Args:
+            self (SearchAgent): The instance of the SearchAgent class.
+            topic (str): The research topic to normalise.
+
+        Returns:
+            str: The normalised research topic.
+        """        
+        
         cleaned = topic.strip()
         prefixes = (
             'research ',
@@ -62,8 +95,18 @@ class SearchAgent(BaseAgent):
 
         return cleaned.rstrip('?.!') or topic
 
-    def run(self, topic: str) -> list[dict]:
-        """Search for a topic and return result list."""
+    def run(self : SearchAgent, topic : str) -> list[dict]:
+        """
+        Search for a topic and return result list.
+
+        Args:
+            self (SearchAgent): The instance of the SearchAgent class.
+            topic (str): The research topic to search for.
+
+        Returns:
+            list[dict]: A list of search results.
+        """
+        
         topic = self._normalise_topic(topic)
 
         messages = [
