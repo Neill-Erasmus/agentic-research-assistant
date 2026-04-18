@@ -6,6 +6,15 @@ import requests
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434/api/chat')
 MODEL = os.getenv('OLLAMA_MODEL', 'llama3')
 
+def _ollama_timeout_seconds() -> float:
+    raw_value = os.getenv('OLLAMA_TIMEOUT_SECONDS') or os.getenv('OLLAMA_TIMEOUT') or '180'
+    try:
+        return max(15.0, float(raw_value))
+    except ValueError:
+        return 180.0
+
+OLLAMA_TIMEOUT_SECONDS = _ollama_timeout_seconds()
+
 class BaseAgent:
     def __init__(self, name: str, system_prompt: str, tools: list[dict]):
         self.name = name
@@ -21,7 +30,7 @@ class BaseAgent:
             'stream': False,
         }
         try:
-            response = self._http.post(OLLAMA_URL, json=payload, timeout=60)
+            response = self._http.post(OLLAMA_URL, json=payload, timeout=OLLAMA_TIMEOUT_SECONDS)
             response.raise_for_status()
             data = response.json()
 
@@ -29,6 +38,12 @@ class BaseAgent:
                 print(f' [{self.name}] LLM response missing expected message content.')
                 return None
             return data
+        except requests.Timeout as exc:
+            print(
+                f' [{self.name}] Ollama request timed out after {OLLAMA_TIMEOUT_SECONDS:.0f}s: {exc}. '
+                'Try a smaller prompt or increase OLLAMA_TIMEOUT_SECONDS.'
+            )
+            return None
         except requests.RequestException as exc:
             print(f' [{self.name}] Could not reach Ollama at {OLLAMA_URL}: {exc}')
             return None
