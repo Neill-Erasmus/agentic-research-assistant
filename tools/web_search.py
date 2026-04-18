@@ -1,6 +1,7 @@
 import requests
 import re
-from urllib.parse import quote
+from html import unescape
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 USER_AGENT = 'MultiAgentResearchAssistant/1.0 (+https://duckduckgo.com/)'
 
@@ -26,7 +27,7 @@ def _contains_term(item: dict, term: str) -> bool:
     return term.lower() in haystack
 
 def _clean_text(text: str) -> str:
-    text = re.sub(r'<[^>]+>', '', text or '')
+    text = unescape(re.sub(r'<[^>]+>', '', text or ''))
     return re.sub(r'\s+', ' ', text).strip()
 
 def _iter_related_topics(topics: list[dict]):
@@ -112,6 +113,7 @@ def _search_wikipedia(query: str, max_results: int) -> list[dict]:
                 'title': title,
                 'url': page.get('fullurl') or f'https://en.wikipedia.org/wiki/{quote(title.replace(" ", "_"))}',
                 'snippet': snippet or f'Wikipedia article about {title}.',
+                'source': 'wikipedia',
             }
         )
     return results
@@ -146,11 +148,106 @@ def _search_duckduckgo(query: str, max_results: int) -> list[dict]:
             continue
 
         title = text.split(' - ')[0][:120]
-        results.append({'title': title, 'url': url, 'snippet': text[:320]})
+        results.append({'title': title, 'url': url, 'snippet': text[:320], 'source': 'duckduckgo_instant'})
         if len(results) >= max_results:
             break
     return results
 
+def _decode_duckduckgo_redirect(url: str) -> str:
+    if not url:
+        return ''
+    parsed = urlparse(url)
+    if 'duckduckgo.com' not in parsed.netloc:
+        return url
+
+    query_args = parse_qs(parsed.query)
+    target = query_args.get('uddg', [''])[0]
+    if target:
+        return unquote(target)
+    return url
+
+def _search_duckduckgo_html(query: str, max_results: int) -> list[dict]:
+    """Use DuckDuckGo HTML page results for broader non-Wikipedia coverage."""
+    response = requests.get(
+        'https://duckduckgo.com/html/',
+        params={'q': query, 'kl': 'us-en'},
+        headers={'User-Agent': USER_AGENT},
+        timeout=10,
+    )
+    response.raise_for_status()
+    html_text = response.text
+
+    results = []
+    anchor_pattern = re.compile(
+        r'<a[^>]*class="result__a"[^>]*href="(?P<href>[^"]+)"[^>]*>(?P<title>.*?)</a>',
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    for match in anchor_pattern.finditer(html_text):
+        href = _decode_duckduckgo_redirect(unescape(match.group('href')).strip())
+        title = _clean_text(match.group('title'))
+        if not href or not title:
+            continue
+
+        window = html_text[match.end(): match.end() + 1200]
+        snippet_match = re.search(
+            r'class="result__snippet"[^>]*>(?P<snippet>.*?)</(?:a|div)>',
+            window,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        snippet = _clean_text(snippet_match.group('snippet')) if snippet_match else ''
+
+        results.append(
+            {
+                'title': title[:160],
+                'url': href,
+                'snippet': snippet[:320],
+                'source': 'duckduckgo_html',
+            }
+        )
+        if len(results) >= max_results:
+            break
+
+    return results
+
+def _should_apply_filter(filtered: list[dict], baseline: list[dict], max_results: int) -> bool:
+    if not filtered:
+        return False
+    if len(filtered) >= len(baseline):
+        return True
+
+    minimum_keep = min(max_results, max(2, max_results // 2))
+    return len(filtered) >= minimum_keep
+
+def _is_wikipedia_result(item: dict) -> bool:
+    return 'wikipedia.org' in (item.get('url', '').lower())
+
+
+def _apply_source_diversity(items: list[dict], max_results: int) -> list[dict]:
+    if not items:
+        return []
+
+    non_wiki = [item for item in items if not _is_wikipedia_result(item)]
+    wiki = [item for item in items if _is_wikipedia_result(item)]
+    if not non_wiki:
+        return items[:max_results]
+
+    merged: list[dict] = []
+    while len(merged) < max_results and (non_wiki or wiki):
+        if non_wiki:
+            merged.append(non_wiki.pop(0))
+            if len(merged) >= max_results:
+                break
+        if wiki:
+            merged.append(wiki.pop(0))
+
+    for remainder in (non_wiki, wiki):
+        for item in remainder:
+            if len(merged) >= max_results:
+                break
+            merged.append(item)
+
+    return merged[:max_results]
 
 def web_search(query: str, max_results: int = 8) -> list[dict]:
     """Search web sources and return [{title, url, snippet}] with deduplication."""
@@ -162,7 +259,7 @@ def web_search(query: str, max_results: int = 8) -> list[dict]:
     combined: list[dict] = []
     seen_urls: set[str] = set()
 
-    for source in (_search_wikipedia, _search_duckduckgo):
+    for source in (_search_wikipedia, _search_duckduckgo_html, _search_duckduckgo):
         try:
             items = source(query, max_results=max_results)
         except requests.RequestException as exc:
@@ -188,18 +285,18 @@ def web_search(query: str, max_results: int = 8) -> list[dict]:
             for item in combined
             if phrase in f"{item.get('title', '')} {item.get('snippet', '')}".lower()
         ]
-        if phrase_filtered:
+        if _should_apply_filter(phrase_filtered, combined, max_results):
             combined = phrase_filtered
 
     if query_terms:
         anchor_term = max(query_terms, key=len)
         anchor_filtered = [item for item in combined if _contains_term(item, anchor_term)]
-        if anchor_filtered:
+        if _should_apply_filter(anchor_filtered, combined, max_results):
             combined = anchor_filtered
 
     if len(query_terms) >= 2:
         filtered = [item for item in combined if _relevance_score(item, query) >= 3]
-        if filtered:
+        if _should_apply_filter(filtered, combined, max_results):
             combined = filtered
 
     if 'works' in query.lower():
@@ -231,4 +328,4 @@ def web_search(query: str, max_results: int = 8) -> list[dict]:
         if len(denoised) >= 2:
             combined = denoised
 
-    return combined[:max_results]
+    return _apply_source_diversity(combined, max_results)
