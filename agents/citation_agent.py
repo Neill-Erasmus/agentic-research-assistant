@@ -9,7 +9,7 @@ class CitationAgent(BaseAgent):
         BaseAgent (_type_): The base agent class that provides common functionality for all agents.
     """    
     
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the CitationAgent with a specific system prompt and no tools.
         The system prompt instructs the agent to format references accurately in APA style.
@@ -24,11 +24,12 @@ class CitationAgent(BaseAgent):
             tools=[]
         )
 
-    def run(self, results: list[dict]) -> list[str]:
+    def run(self : CitationAgent, results: list[dict]) -> list[str]:
         """
         Format a list of search results into APA-style citations.
 
         Args:
+            self (CitationAgent): The instance of the CitationAgent class.
             results (list[dict]): A list of search results, each containing information about a reference.
 
         Returns:
