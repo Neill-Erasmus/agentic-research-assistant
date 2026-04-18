@@ -8,6 +8,12 @@ from agents.fact_checker_agent import FactCheckerAgent
 from agents.citation_agent import CitationAgent
 
 class ResearchOrchestrator:
+    """
+    Orchestrates the execution of multiple agents to fulfill a research query.
+    The orchestrator manages the flow of information between agents, maintains session memory for follow-up queries, and compiles the final report.
+    It uses a PlannerAgent to determine which agents to run based on the user's query and ensures that dependencies between agents are respected (e.g., if SearchAgent is used, CitationAgent must also be included). 
+    """    
+    
     DEFAULT_AGENT_PLAN = ['SearchAgent', 'SummariserAgent', 'FactCheckerAgent', 'CitationAgent']
     ORDINAL_RESULT_INDEX = {
         'first': 0,
@@ -22,7 +28,14 @@ class ResearchOrchestrator:
         'tenth': 9,
     }
 
-    def __init__(self):
+    def __init__(self : ResearchOrchestrator) -> None:
+        """
+        Initialize the ResearchOrchestrator by instantiating all the necessary agents and setting up session memory.
+
+        Args:
+            self (ResearchOrchestrator): The instance of the ResearchOrchestrator class being initialized.
+        """        
+        
         print('Initialising agents...')
         self.search_agent = SearchAgent()
         self.summariser_agent = SummariserAgent()
@@ -36,7 +49,18 @@ class ResearchOrchestrator:
         self.session_memory: list[dict] = []
         print('All agents ready.\n')
 
-    def run(self, query: str) -> str:
+    def run(self : ResearchOrchestrator, query : str) -> str:
+        """
+        Execute the research pipeline for a given query by determining the appropriate agents to run, managing their execution, and compiling the final report.
+
+        Args:
+            self (ResearchOrchestrator): The instance of the ResearchOrchestrator class executing the run method.
+            query (str): The research query to be processed.
+
+        Returns:
+            str: The compiled research report.
+        """        
+        
         print(f'Orchestrator received query: "{query}"\n')
 
         effective_query, seeded_results = self._resolve_query_with_memory(query)
@@ -121,7 +145,19 @@ class ResearchOrchestrator:
         report = self._compile_report(query, plan, summary, fact_check, citations)
         return report
 
-    def _resolve_query_with_memory(self, query: str) -> tuple[str, list[dict]]:
+    def _resolve_query_with_memory(self : ResearchOrchestrator, query : str) -> tuple[str, list[dict]]:
+        """
+        Check if the query references a specific result from a previous search in the session memory.
+        If so, extract that result and build an effective query based on its content.
+
+        Args:
+            self (ResearchOrchestrator): The instance of the ResearchOrchestrator class.
+            query (str): The research query to be processed.
+
+        Returns:
+            tuple[str, list[dict]]: A tuple containing the resolved query and the referenced result.
+        """       
+        
         result_index = self._extract_referenced_result_index(query)
         if result_index is None:
             return query, []
@@ -149,7 +185,19 @@ class ResearchOrchestrator:
         )
         return resolved_query, [selected_result]
 
-    def _extract_referenced_result_index(self, query: str) -> int | None:
+    def _extract_referenced_result_index(self : ResearchOrchestrator, query : str) -> int | None:
+        """
+        Extract the index of a referenced search result from the query, if present.
+        The method looks for ordinal indicators (e.g., "first result", "2nd source") to determine which result the user is referring to.
+
+        Args:
+            self (ResearchOrchestrator): The instance of the ResearchOrchestrator class.
+            query (str): The research query to be processed.
+
+        Returns:
+            int | None: The index of the referenced result, or None if not found.
+        """        
+        
         lowered = query.lower()
 
         numbered_patterns = (
@@ -169,13 +217,36 @@ class ResearchOrchestrator:
 
         return None
 
-    def _latest_memory_entry_with_results(self) -> dict | None:
+    def _latest_memory_entry_with_results(self : ResearchOrchestrator) -> dict | None:
+        """
+        Retrieve the most recent entry from session memory that contains search results.
+
+        Args:
+            self (ResearchOrchestrator): The instance of the ResearchOrchestrator class.
+
+        Returns:
+            dict | None: The most recent entry containing search results, or None if not found.
+        """        
+        
         for entry in reversed(self.session_memory):
             if entry.get('results'):
                 return entry
         return None
 
-    def _build_query_from_result(self, original_query: str, result: dict) -> str:
+    def _build_query_from_result(self : ResearchOrchestrator, original_query: str, result: dict) -> str:
+        """
+        Construct an effective query by extracting key information from a referenced search result.
+        The method combines the title, snippet, and URL of the result to create a new query that can be used for follow-up research.
+
+        Args:
+            self (ResearchOrchestrator): The instance of the ResearchOrchestrator class.
+            original_query (str): The original research query.
+            result (dict): The search result from which to extract information.
+
+        Returns:
+            str: The constructed query for follow-up research.
+        """        
+        
         title = (result.get('title') or '').strip()
         snippet = (result.get('snippet') or '').strip()
         url = (result.get('url') or '').strip()
@@ -190,15 +261,30 @@ class ResearchOrchestrator:
         return resolved_query or original_query
 
     def _remember_run(
-        self,
-        query: str,
-        effective_query: str,
-        plan: list[str],
-        results: list[dict],
-        summary: str,
-        fact_check: str,
-        citations: list[str],
+        self : ResearchOrchestrator,
+        query : str,
+        effective_query : str,
+        plan : list[str],
+        results : list[dict],
+        summary : str,
+        fact_check : str,
+        citations : list[str],
     ) -> None:
+        """
+        Store the details of a completed research run in session memory for potential reference in future follow-up queries.
+        The stored information includes the original query, the effective query used for agent execution, the plan of agents that were run, the results obtained, the summary generated, the fact-checking output, and the formatted citations.
+
+        Args:
+            self (ResearchOrchestrator): The instance of the ResearchOrchestrator class.
+            query (str): The original research query.
+            effective_query (str): The effective query used for agent execution.
+            plan (list[str]): The plan of agents that were run.
+            results (list[dict]): The search results obtained.
+            summary (str): The summary generated.
+            fact_check (str): The fact-checking output.
+            citations (list[str]): The formatted citations.
+        """        
+        
         memory_entry = {
             'query': query,
             'effective_query': effective_query,
@@ -210,7 +296,20 @@ class ResearchOrchestrator:
         }
         self.session_memory.append(memory_entry)
 
-    def _plan_agents(self, query: str) -> list[str]:
+    def _plan_agents(self : ResearchOrchestrator, query : str) -> list[str]:
+        """
+        Determine which agents to run for a given query by consulting the PlannerAgent.
+        The method constructs a prompt that describes the allowed agents and the rules for selecting them, then parses the PlannerAgent's response to extract a valid execution plan.
+        If the PlannerAgent fails to provide a valid plan, a default sequence of agents is returned.
+
+        Args:
+            self (ResearchOrchestrator): The instance of the ResearchOrchestrator class.
+            query (str): The research query for which to determine agent execution.
+
+        Returns:
+            list[str]: A list of agent names in the order they should be executed.
+        """      
+        
         plan_messages = [
             {
                 'role': 'system',
@@ -244,7 +343,19 @@ class ResearchOrchestrator:
         print(' [PlannerAgent] Invalid or empty plan. Falling back to default pipeline.')
         return self.DEFAULT_AGENT_PLAN.copy()
 
-    def _ensure_citation_if_search_used(self, plan: list[str]) -> list[str]:
+    def _ensure_citation_if_search_used(self : ResearchOrchestrator, plan : list[str]) -> list[str]:
+        """
+        Ensure that if SearchAgent is included in the plan, CitationAgent is also included and correctly ordered.
+        This method checks the proposed agent plan for the presence of SearchAgent and enforces the inclusion of CitationAgent if necessary, as well as ensuring that CitationAgent runs after SearchAgent to satisfy the dependency.
+
+        Args:
+            self (ResearchOrchestrator): The instance of the ResearchOrchestrator class.
+            plan (list[str]): The proposed agent plan.
+
+        Returns:
+            list[str]: The revised agent plan with CitationAgent included if necessary.
+        """        
+        
         if 'SearchAgent' not in plan:
             return plan
 
@@ -261,12 +372,35 @@ class ResearchOrchestrator:
 
         return plan
 
-    def _extract_chat_content(self, response: dict | None) -> str:
+    def _extract_chat_content(self : ResearchOrchestrator, response : dict | None) -> str:
+        """
+        Extract the content of a chat response from an agent, handling potential issues with missing or malformed responses.
+
+        Args:
+            self (ResearchOrchestrator): The instance of the ResearchOrchestrator class.
+            response (dict | None): The chat response from the agent.
+
+        Returns:
+            str: The extracted content from the chat response.
+        """        
+        
         if not response or not isinstance(response, dict):
             return ''
         return str(response.get('message', {}).get('content', '')).strip()
 
-    def _parse_agent_plan(self, text: str) -> list[str]:
+    def _parse_agent_plan(self : ResearchOrchestrator, text : str) -> list[str]:
+        """
+        Parse the agent plan from the PlannerAgent's response text by looking for JSON structures that contain a list of agent names.
+        The method searches for fenced code blocks, bracketed sections, and the entire text as potential sources of the JSON plan, then validates and canonicalizes the agent names to produce a final execution plan.
+
+        Args:
+            self (ResearchOrchestrator): The instance of the ResearchOrchestrator class.
+            text (str): The text to parse for the agent plan.
+
+        Returns:
+            list[str]: The list of canonicalized agent names.
+        """            
+        
         if not text:
             return []
 
@@ -286,7 +420,19 @@ class ResearchOrchestrator:
 
         return []
 
-    def _parse_agent_plan_json(self, payload: str) -> list[str]:
+    def _parse_agent_plan_json(self : ResearchOrchestrator, payload : str) -> list[str]:
+        """
+        Parse a JSON payload to extract a list of agent names.
+        The method handles different potential structures of the JSON (either a direct list or a dictionary containing an 'agents' key) and canonicalizes the agent names to ensure they match the expected set of agents.
+
+        Args:
+            self (ResearchOrchestrator): The instance of the ResearchOrchestrator class.
+            payload (str): The JSON payload to parse.
+
+        Returns:
+            list[str]: The list of canonicalized agent names.
+        """               
+        
         try:
             data = json.loads(payload)
         except json.JSONDecodeError:
@@ -309,7 +455,19 @@ class ResearchOrchestrator:
 
         return selected
 
-    def _canonical_agent_name(self, name: object) -> str | None:
+    def _canonical_agent_name(self : ResearchOrchestrator, name : object) -> str | None:
+        """
+        Convert a given agent name to its canonical form if it matches known aliases, or return None if it does not correspond to a valid agent.
+        The method normalizes the input name by removing non-alphabetic characters and converting to lowercase, then checks against a mapping of known aliases to canonical agent names.
+
+        Args:
+            self (ResearchOrchestrator): The instance of the ResearchOrchestrator class.
+            name (object): The agent name to canonicalize.
+
+        Returns:
+            str | None: The canonical agent name if it matches a known alias, otherwise None.
+        """                
+        
         if not isinstance(name, str):
             return None
 
@@ -331,7 +489,18 @@ class ResearchOrchestrator:
         }
         return alias_map.get(token)
 
-    def _build_summary_input(self, results: list[dict]) -> str:
+    def _build_summary_input(self : ResearchOrchestrator, results : list[dict]) -> str:
+        """
+        Construct the input text for the SummariserAgent by combining snippets from search results.
+
+        Args:
+            self (ResearchOrchestrator): The instance of the ResearchOrchestrator class.
+            results (list[dict]): The list of search results.
+
+        Returns:
+            str: The combined input text for the SummariserAgent.
+        """            
+        
         source_blocks = []
         for idx, result in enumerate(results, 1):
             snippet = (result.get('snippet') or '').strip()
@@ -346,7 +515,22 @@ class ResearchOrchestrator:
             combined_text = '\n'.join(r.get('title', '') for r in results)
         return combined_text
 
-    def _compile_report(self, query, plan, summary, fact_check, citations):
+    def _compile_report(self : ResearchOrchestrator, query : str, plan : list[str], summary : str, fact_check : str, citations : list[str]) -> str:
+        """
+        Compile the final research report by combining all the generated content.
+
+        Args:
+            self (ResearchOrchestrator): The instance of the ResearchOrchestrator class.
+            query (str): The original research query.
+            plan (list[str]): The list of agents in the execution plan.
+            summary (str): The combined summary from the search results.
+            fact_check (str): The fact-checking results.
+            citations (list[str]): The list of cited sources.
+
+        Returns:
+            str: The complete research report.
+        """            
+        
         lines = [
             f'RESEARCH REPORT',
             f'Query: {query}',
