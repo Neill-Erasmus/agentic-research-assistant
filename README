@@ -4,7 +4,7 @@
 [![Architecture](https://img.shields.io/badge/Architecture-Multi--Agent-0A7E8C)](#architecture)
 [![LLM Backend](https://img.shields.io/badge/LLM-Ollama%20-F97316)](https://ollama.com/)
 [![Search Sources](https://img.shields.io/badge/Search-Wikipedia%20%2B%20DuckDuckGo-0B7285)](#how-it-works)
-[![License](https://img.shields.io/badge/License-Not%20Specified-lightgrey)](#license)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A modular, agent-based research assistant that turns a user query into a structured report with:
 
@@ -233,6 +233,5 @@ SOURCES
 
 ## License
 
-A license file is not currently included in this repository.
-
-If you plan to distribute or accept external contributions, add a LICENSE file (for example, MIT or Apache-2.0) to clarify usage rights.
+This project is licensed under the MIT License.
+See [LICENSE](LICENSE) for full text.
