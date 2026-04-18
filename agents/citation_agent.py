@@ -16,9 +16,18 @@ class CitationAgent(BaseAgent):
         """Format each search result as a citation string."""
         citations = []
         for r in results:
+            author = (
+                r.get('author')
+                or r.get('authors')
+                or r.get('byline')
+                or r.get('publisher')
+                or r.get('source')
+                or r.get('site_name')
+            )
             citation = format_citation(
                 url=r.get('url', ''),
-                title=r.get('title', 'Untitled')
+                title=r.get('title', 'Untitled'),
+                author=author,
             )
             citations.append(citation)
         return citations
