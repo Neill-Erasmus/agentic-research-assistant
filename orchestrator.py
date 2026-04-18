@@ -1,5 +1,6 @@
 from agents.search_agent import SearchAgent
 from agents.summariser_agent import SummariserAgent
+from agents.fact_checker_agent import FactCheckerAgent
 from agents.citation_agent import CitationAgent
 
 class ResearchOrchestrator:
@@ -7,13 +8,14 @@ class ResearchOrchestrator:
         print('Initialising agents...')
         self.search_agent = SearchAgent()
         self.summariser_agent = SummariserAgent()
+        self.fact_checker_agent = FactCheckerAgent()
         self.citation_agent = CitationAgent()
         print('All agents ready.\n')
 
     def run(self, query: str) -> str:
         """
         Orchestrate the full research pipeline:
-        1. Search -> 2. Summarise each result -> 3. Cite -> 4. Compile
+        1. Search -> 2. Summarise -> 3. Fact-check -> 4. Cite -> 5. Compile
         """
         print(f'Orchestrator received query: "{query}"\n')
 
@@ -47,17 +49,24 @@ class ResearchOrchestrator:
             summary = f'- Summary generation failed: {exc}'
         print(' Summary complete.\n')
 
-        print('[Step 3] Dispatching CitationAgent...')
+        print('[Step 3] Dispatching FactCheckerAgent...')
+        try:
+            fact_check = self.fact_checker_agent.run(summary)
+        except Exception as exc:
+            fact_check = f'- Fact-check generation failed: {exc}'
+        print(' Fact-check complete.\n')
+
+        print('[Step 4] Dispatching CitationAgent...')
         try:
             citations = self.citation_agent.run(results)
         except Exception as exc:
             citations = [f'Citation generation failed: {exc}']
         print(' Citations formatted.\n')
 
-        report = self._compile_report(query, summary, citations)
+        report = self._compile_report(query, summary, fact_check, citations)
         return report
 
-    def _compile_report(self, query, summary, citations):
+    def _compile_report(self, query, summary, fact_check, citations):
         lines = [
             f'RESEARCH REPORT',
             f'Query: {query}',
@@ -66,6 +75,10 @@ class ResearchOrchestrator:
             'SUMMARY',
             '-' * 30,
             summary,
+            '',
+            'FACT CHECK',
+            '-' * 30,
+            fact_check,
             '',
             'SOURCES',
             '-' * 30,
