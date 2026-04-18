@@ -28,7 +28,7 @@ class ResearchOrchestrator:
         'tenth': 9,
     }
 
-    def __init__(self : ResearchOrchestrator) -> None:
+    def __init__(self) -> None:
         """
         Initialize the ResearchOrchestrator by instantiating all the necessary agents and setting up session memory.
 
@@ -49,7 +49,7 @@ class ResearchOrchestrator:
         self.session_memory: list[dict] = []
         print('All agents ready.\n')
 
-    def run(self : ResearchOrchestrator, query : str) -> str:
+    def run(self, query : str) -> str:
         """
         Execute the research pipeline for a given query by determining the appropriate agents to run, managing their execution, and compiling the final report.
 
@@ -145,7 +145,7 @@ class ResearchOrchestrator:
         report = self._compile_report(query, plan, summary, fact_check, citations)
         return report
 
-    def _resolve_query_with_memory(self : ResearchOrchestrator, query : str) -> tuple[str, list[dict]]:
+    def _resolve_query_with_memory(self, query : str) -> tuple[str, list[dict]]:
         """
         Check if the query references a specific result from a previous search in the session memory.
         If so, extract that result and build an effective query based on its content.
@@ -185,7 +185,7 @@ class ResearchOrchestrator:
         )
         return resolved_query, [selected_result]
 
-    def _extract_referenced_result_index(self : ResearchOrchestrator, query : str) -> int | None:
+    def _extract_referenced_result_index(self, query : str) -> int | None:
         """
         Extract the index of a referenced search result from the query, if present.
         The method looks for ordinal indicators (e.g., "first result", "2nd source") to determine which result the user is referring to.
@@ -217,7 +217,7 @@ class ResearchOrchestrator:
 
         return None
 
-    def _latest_memory_entry_with_results(self : ResearchOrchestrator) -> dict | None:
+    def _latest_memory_entry_with_results(self) -> dict | None:
         """
         Retrieve the most recent entry from session memory that contains search results.
 
@@ -233,7 +233,7 @@ class ResearchOrchestrator:
                 return entry
         return None
 
-    def _build_query_from_result(self : ResearchOrchestrator, original_query: str, result: dict) -> str:
+    def _build_query_from_result(self, original_query: str, result: dict) -> str:
         """
         Construct an effective query by extracting key information from a referenced search result.
         The method combines the title, snippet, and URL of the result to create a new query that can be used for follow-up research.
@@ -261,7 +261,7 @@ class ResearchOrchestrator:
         return resolved_query or original_query
 
     def _remember_run(
-        self : ResearchOrchestrator,
+        self,
         query : str,
         effective_query : str,
         plan : list[str],
@@ -296,7 +296,7 @@ class ResearchOrchestrator:
         }
         self.session_memory.append(memory_entry)
 
-    def _plan_agents(self : ResearchOrchestrator, query : str) -> list[str]:
+    def _plan_agents(self, query : str) -> list[str]:
         """
         Determine which agents to run for a given query by consulting the PlannerAgent.
         The method constructs a prompt that describes the allowed agents and the rules for selecting them, then parses the PlannerAgent's response to extract a valid execution plan.
@@ -343,7 +343,7 @@ class ResearchOrchestrator:
         print(' [PlannerAgent] Invalid or empty plan. Falling back to default pipeline.')
         return self.DEFAULT_AGENT_PLAN.copy()
 
-    def _ensure_citation_if_search_used(self : ResearchOrchestrator, plan : list[str]) -> list[str]:
+    def _ensure_citation_if_search_used(self, plan : list[str]) -> list[str]:
         """
         Ensure that if SearchAgent is included in the plan, CitationAgent is also included and correctly ordered.
         This method checks the proposed agent plan for the presence of SearchAgent and enforces the inclusion of CitationAgent if necessary, as well as ensuring that CitationAgent runs after SearchAgent to satisfy the dependency.
@@ -372,7 +372,7 @@ class ResearchOrchestrator:
 
         return plan
 
-    def _extract_chat_content(self : ResearchOrchestrator, response : dict | None) -> str:
+    def _extract_chat_content(self, response : dict | None) -> str:
         """
         Extract the content of a chat response from an agent, handling potential issues with missing or malformed responses.
 
@@ -388,7 +388,7 @@ class ResearchOrchestrator:
             return ''
         return str(response.get('message', {}).get('content', '')).strip()
 
-    def _parse_agent_plan(self : ResearchOrchestrator, text : str) -> list[str]:
+    def _parse_agent_plan(self, text : str) -> list[str]:
         """
         Parse the agent plan from the PlannerAgent's response text by looking for JSON structures that contain a list of agent names.
         The method searches for fenced code blocks, bracketed sections, and the entire text as potential sources of the JSON plan, then validates and canonicalizes the agent names to produce a final execution plan.
@@ -420,7 +420,7 @@ class ResearchOrchestrator:
 
         return []
 
-    def _parse_agent_plan_json(self : ResearchOrchestrator, payload : str) -> list[str]:
+    def _parse_agent_plan_json(self, payload : str) -> list[str]:
         """
         Parse a JSON payload to extract a list of agent names.
         The method handles different potential structures of the JSON (either a direct list or a dictionary containing an 'agents' key) and canonicalizes the agent names to ensure they match the expected set of agents.
@@ -455,7 +455,7 @@ class ResearchOrchestrator:
 
         return selected
 
-    def _canonical_agent_name(self : ResearchOrchestrator, name : object) -> str | None:
+    def _canonical_agent_name(self, name : object) -> str | None:
         """
         Convert a given agent name to its canonical form if it matches known aliases, or return None if it does not correspond to a valid agent.
         The method normalizes the input name by removing non-alphabetic characters and converting to lowercase, then checks against a mapping of known aliases to canonical agent names.
@@ -489,7 +489,7 @@ class ResearchOrchestrator:
         }
         return alias_map.get(token)
 
-    def _build_summary_input(self : ResearchOrchestrator, results : list[dict]) -> str:
+    def _build_summary_input(self, results : list[dict]) -> str:
         """
         Construct the input text for the SummariserAgent by combining snippets from search results.
 
@@ -515,7 +515,7 @@ class ResearchOrchestrator:
             combined_text = '\n'.join(r.get('title', '') for r in results)
         return combined_text
 
-    def _compile_report(self : ResearchOrchestrator, query : str, plan : list[str], summary : str, fact_check : str, citations : list[str]) -> str:
+    def _compile_report(self, query : str, plan : list[str], summary : str, fact_check : str, citations : list[str]) -> str:
         """
         Compile the final research report by combining all the generated content.
 

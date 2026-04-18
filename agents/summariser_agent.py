@@ -27,7 +27,7 @@ class SummariserAgent(BaseAgent):
             tools=[]
         )
 
-    def run(self : SummariserAgent, text: str) -> str:
+    def run(self, text: str) -> str:
         """
         Generate a concise summary of the provided research text, focusing on key facts and avoiding lengthy explanations or source descriptions.
 

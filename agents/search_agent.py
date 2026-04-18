@@ -34,7 +34,7 @@ class SearchAgent(BaseAgent):
             tools=TOOLS
         )
 
-    def _build_tool_prompt_static(self : SearchAgent, tools : list[dict]) -> str:
+    def _build_tool_prompt_static(self, tools : list[dict]) -> str:
         """
         Build a static part of the system prompt that describes the available tools.
 
@@ -56,7 +56,7 @@ class SearchAgent(BaseAgent):
             lines.append(f' - {t["name"]}: {t["description"]}')
         return '\n'.join(lines)
 
-    def _normalise_topic(self : SearchAgent, topic : str) -> str:
+    def _normalise_topic(self, topic : str) -> str:
         """
         Normalise the research topic by stripping common prefixes and suffixes, and simplifying certain patterns.
 
@@ -95,7 +95,7 @@ class SearchAgent(BaseAgent):
 
         return cleaned.rstrip('?.!') or topic
 
-    def run(self : SearchAgent, topic : str) -> list[dict]:
+    def run(self, topic : str) -> list[dict]:
         """
         Search for a topic and return result list.
 
