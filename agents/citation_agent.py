@@ -2,7 +2,19 @@ from agents.base_agent import BaseAgent
 from tools.citation import format_citation
 
 class CitationAgent(BaseAgent):
+    """
+    A specialized agent for formatting citations in APA style.
+
+    Args:
+        BaseAgent (_type_): The base agent class that provides common functionality for all agents.
+    """    
+    
     def __init__(self):
+        """
+        Initialize the CitationAgent with a specific system prompt and no tools.
+        The system prompt instructs the agent to format references accurately in APA style.
+        """        
+        
         super().__init__(
             name='CitationAgent',
             system_prompt=(
@@ -13,7 +25,16 @@ class CitationAgent(BaseAgent):
         )
 
     def run(self, results: list[dict]) -> list[str]:
-        """Format each search result as a citation string."""
+        """
+        Format a list of search results into APA-style citations.
+
+        Args:
+            results (list[dict]): A list of search results, each containing information about a reference.
+
+        Returns:
+            list[str]: A list of formatted APA-style citations.
+        """        
+        
         citations = []
         for r in results:
             author = (
