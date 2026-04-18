@@ -2,6 +2,7 @@ import re
 from typing import Callable
 
 MAX_WORDS_PER_BULLET = 22
+RETRY_INPUT_CHAR_LIMIT = 6000
 
 def _clean_text_fragment(text: str) -> str:
     cleaned = re.sub(r'(?i)^source\s+\d+:\s*', '', text).strip()
@@ -53,6 +54,44 @@ def _extract_candidate_sentences(text: str) -> list[str]:
             continue
         candidates.append(cleaned)
     return candidates
+
+def _normalise_similarity_tokens(text: str) -> set[str]:
+    return {
+        token
+        for token in re.findall(r"[a-zA-Z0-9']+", text.lower())
+        if len(token) > 2
+    }
+
+def _is_similar_sentence(left: str, right: str) -> bool:
+    left_clean = re.sub(r'[^a-z0-9 ]', '', left.lower()).strip()
+    right_clean = re.sub(r'[^a-z0-9 ]', '', right.lower()).strip()
+    if not left_clean or not right_clean:
+        return False
+    if left_clean == right_clean:
+        return True
+
+    if (left_clean in right_clean or right_clean in left_clean) and min(len(left_clean), len(right_clean)) >= 25:
+        return True
+
+    left_tokens = _normalise_similarity_tokens(left_clean)
+    right_tokens = _normalise_similarity_tokens(right_clean)
+    if not left_tokens or not right_tokens:
+        return False
+
+    overlap = len(left_tokens & right_tokens) / min(len(left_tokens), len(right_tokens))
+    return overlap >= 0.8
+
+def _trim_text_for_retry(text: str, max_chars: int = RETRY_INPUT_CHAR_LIMIT) -> str:
+    stripped = text.strip()
+    if len(stripped) <= max_chars:
+        return stripped
+
+    clipped = stripped[:max_chars]
+    sentence_break = max(clipped.rfind('\n'), clipped.rfind('. '))
+    if sentence_break > max_chars // 2:
+        clipped = clipped[:sentence_break + 1]
+
+    return clipped.strip() + '\n\n[truncated for faster summarisation]'
 
 def _fallback_summary(text: str, max_sentences: int) -> str:
     """Build a deterministic fallback summary if the model call fails."""
@@ -122,7 +161,7 @@ def _normalise_to_bullets(text: str, max_sentences: int) -> str:
         key = re.sub(r'[^a-z0-9 ]', '', line.lower())
         if key in seen:
             continue
-        if any(is_similar(sentence, existing) for existing in unique_selected):
+        if any(_is_similar_sentence(line, existing) for existing in unique):
             continue
         seen.add(key)
         unique.append(_clip_words(line, MAX_WORDS_PER_BULLET))
@@ -186,12 +225,18 @@ def summarise_text(
         )}
     ]
 
-    raw_summary = _extract_chat_content(chat(messages))
+    raw_response = chat(messages)
+    raw_summary = _extract_chat_content(raw_response)
     normalised = _normalise_to_bullets(raw_summary, max_sentences)
     min_bullets = min(3, max_sentences)
     normalised_count = len([line for line in normalised.splitlines() if line.strip()])
     if normalised and normalised_count >= min_bullets and not _needs_compression_retry(raw_summary, max_sentences):
         return normalised
+
+    if raw_response is None and len(raw_text) <= RETRY_INPUT_CHAR_LIMIT:
+        return _fallback_summary(raw_text, max_sentences)
+
+    retry_seed_text = raw_summary or _trim_text_for_retry(raw_text)
 
     compression_messages = [
         {
@@ -206,16 +251,20 @@ def summarise_text(
             'role': 'user',
             'content': (
                 'Rewrite this into short key-point bullets only:\n\n'
-                f'{raw_summary or raw_text}'
+                f'{retry_seed_text}'
             ),
         },
     ]
 
-    retry_summary = _extract_chat_content(chat(compression_messages))
+    retry_response = chat(compression_messages)
+    retry_summary = _extract_chat_content(retry_response)
     retry_normalised = _normalise_to_bullets(retry_summary, max_sentences)
     retry_count = len([line for line in retry_normalised.splitlines() if line.strip()])
     if retry_normalised and retry_count >= min_bullets:
         return retry_normalised
+
+    if raw_response is None and retry_response is None:
+        return _fallback_summary(raw_text, max_sentences)
 
     if normalised:
         return normalised
