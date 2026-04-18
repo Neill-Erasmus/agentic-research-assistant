@@ -27,6 +27,7 @@ class ResearchOrchestrator:
         print(f'Orchestrator received query: "{query}"\n')
 
         plan = self._plan_agents(query)
+        plan = self._ensure_citation_if_search_used(plan)
         print(f' Planned agent sequence: {", ".join(plan)}\n')
 
         results: list[dict] = []
@@ -109,7 +110,7 @@ class ResearchOrchestrator:
                     '- If the query needs external info, include SearchAgent before downstream agents.\n'
                     '- SummariserAgent depends on search output.\n'
                     '- FactCheckerAgent depends on summary output.\n'
-                    '- CitationAgent depends on search output.'
+                    '- If SearchAgent is included, CitationAgent must also be included.'
                 ),
             },
             {'role': 'user', 'content': f'Query: {query}'},
@@ -124,6 +125,23 @@ class ResearchOrchestrator:
 
         print(' [PlannerAgent] Invalid or empty plan. Falling back to default pipeline.')
         return self.DEFAULT_AGENT_PLAN.copy()
+
+    def _ensure_citation_if_search_used(self, plan: list[str]) -> list[str]:
+        if 'SearchAgent' not in plan:
+            return plan
+
+        if 'CitationAgent' not in plan:
+            enforced_plan = plan + ['CitationAgent']
+            print(' [Orchestrator] Enforcing CitationAgent because SearchAgent was selected.')
+            return enforced_plan
+
+        if plan.index('CitationAgent') < plan.index('SearchAgent'):
+            reordered_plan = [agent for agent in plan if agent != 'CitationAgent']
+            reordered_plan.append('CitationAgent')
+            print(' [Orchestrator] Moving CitationAgent after SearchAgent to satisfy dependency.')
+            return reordered_plan
+
+        return plan
 
     def _extract_chat_content(self, response: dict | None) -> str:
         if not response or not isinstance(response, dict):
