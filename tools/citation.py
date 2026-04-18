@@ -22,8 +22,20 @@ _KNOWN_DOMAIN_AUTHORS = {
     'arxiv': 'arXiv',
 }
 
+def _coerce_author(author : object) -> str:
+    """
+    Coerces an author field into a clean string format.
+    Handles various input types gracefully, including strings, lists, tuples, and sets.
+    If the input is a collection, it joins non-empty items with commas.
+    If the input is not a string or collection, it returns an empty string.
 
-def _coerce_author(author: object) -> str:
+    Args:
+        author (object): The author information to be coerced, which can be a string, list, tuple, set, or other object type.
+
+    Returns:
+        str: The coerced author string.
+    """    
+    
     if isinstance(author, str):
         return author.strip()
     if isinstance(author, (list, tuple, set)):
@@ -32,7 +44,19 @@ def _coerce_author(author: object) -> str:
     return ''
 
 
-def _author_from_url(url: str) -> str:
+def _author_from_url(url : str) -> str:
+    """
+    Attempts to infer an author or organization name from a given URL by extracting the domain and applying heuristics.
+    It normalizes the domain to remove common prefixes and suffixes, then checks against a known mapping of domains to author names.
+    If no known mapping is found, it formats the domain as a title-cased string.
+
+    Args:
+        url (str): The URL from which to infer the author or organization name.
+
+    Returns:
+        str: The inferred author or organization name.
+    """    
+    
     host = (urlparse(url).netloc or '').lower()
     if host.startswith('www.'):
         host = host[4:]
@@ -58,7 +82,19 @@ def _author_from_url(url: str) -> str:
     return brand.title() if brand else ''
 
 
-def _resolve_author(author: object, url: str) -> str:
+def _resolve_author(author : object, url : str) -> str:
+    """
+    Resolves an author name by first attempting to coerce a provided author field, then falling back to inferring from the URL if the author is missing or a known placeholder.
+    If both methods fail to produce a valid author name, it returns 'Unknown'.
+
+    Args:
+        author (object): The author information to be resolved.
+        url (str): The URL from which to infer the author or organization name.
+
+    Returns:
+        str: The resolved author name, or 'Unknown' if unable to resolve.
+    """    
+    
     normalised = _coerce_author(author)
     if normalised and normalised.lower() not in _PLACEHOLDER_AUTHORS:
         return normalised
@@ -69,8 +105,21 @@ def _resolve_author(author: object, url: str) -> str:
 
     return 'Unknown'
 
-def format_citation(url: str, title: str, author: object = None) -> str:
-    """Formats a basic APA-style citation with graceful fallback fields."""
+def format_citation(url : str, title : str, author : object = None) -> str:
+    """
+    Format a citation string in a consistent style, using the provided URL, title, and optional author information.
+    The function attempts to resolve the author name using the provided author field and URL, then constructs a citation string that includes the author, publication year, title, and access information.
+    If the author cannot be resolved, it defaults to 'Unknown'. The publication year is set to the current year, and the access date is formatted as 'Month Day, Year'.
+
+    Args:
+        url (str): The URL of the cited work.
+        title (str): The title of the cited work.
+        author (object, optional): The author information. Defaults to None.
+
+    Returns:
+        str: The formatted citation string.
+    """    
+    
     title = (title or 'Untitled').strip()
     url = (url or 'URL unavailable').strip()
     author_text = _resolve_author(author, url)

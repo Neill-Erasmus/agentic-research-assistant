@@ -7,6 +7,13 @@ OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434/api/chat')
 MODEL = os.getenv('OLLAMA_MODEL', 'llama3')
 
 def _ollama_timeout_seconds() -> float:
+    """
+    Define the timeout for Ollama requests.
+
+    Returns:
+        float: The timeout in seconds.
+    """    
+    
     raw_value = os.getenv('OLLAMA_TIMEOUT_SECONDS') or os.getenv('OLLAMA_TIMEOUT') or '180'
     try:
         return max(15.0, float(raw_value))
@@ -16,14 +23,39 @@ def _ollama_timeout_seconds() -> float:
 OLLAMA_TIMEOUT_SECONDS = _ollama_timeout_seconds()
 
 class BaseAgent:
-    def __init__(self, name: str, system_prompt: str, tools: list[dict]):
+    """
+    This class represents a base agent that can interact with the Ollama LLM.
+    It provides common functionality for sending messages, handling tool calls, and defining a system prompt.
+    Subclasses can implement specific agents with their own prompts and tools by inheriting from this base class.
+    """    
+    
+    def __init__(self : BaseAgent, name : str, system_prompt : str, tools : list[dict]) -> None:
+        """
+        Initialize the base agent.
+
+        Args:
+            name (str): The name of the agent.
+            system_prompt (str): The system prompt for the agent.
+            tools (list[dict]): A list of available tools for the agent.
+        """        
+        
         self.name = name
         self.system_prompt = system_prompt
         self.tools = tools
         self._http = requests.Session()
 
-    def _chat(self, messages: list[dict]) -> dict | None:
-        """Send messages to Ollama and return the response dict, or None on failure."""
+    def _chat(self : BaseAgent, messages: list[dict]) -> dict | None:
+        """
+        Send messages to Ollama and return the response dict, or None on failure.
+
+        Args:
+            self (BaseAgent): The instance of the BaseAgent class.
+            messages (list[dict]): A list of message dicts to send to the LLM, typically including a system prompt and user input.
+
+        Returns:
+            dict | None: The response from Ollama as a dict, or None if there was an error or timeout.
+        """        
+        
         payload = {
             'model': MODEL,
             'messages': messages,
@@ -51,8 +83,17 @@ class BaseAgent:
             print(f' [{self.name}] Ollama returned non-JSON response.')
             return None
 
-    def _build_tool_prompt(self) -> str:
-        """Describe tools to the model in the system prompt."""
+    def _build_tool_prompt(self : BaseAgent) -> str:
+        """
+        Build a prompt section describing the available tools and how to call them.
+
+        Args:
+            self (BaseAgent): The instance of the BaseAgent class.
+
+        Returns:
+            str: The tool prompt.
+        """        
+        
         if not self.tools:
             return ''
         lines = [
@@ -66,8 +107,18 @@ class BaseAgent:
             lines.append(f'   Parameters: {t["params"]}')
         return '\n'.join(lines)
 
-    def _parse_tool_call(self, text: str) -> dict | None:
-        """Try to parse the model response as a tool call JSON."""
+    def _parse_tool_call(self : BaseAgent, text: str) -> dict | None:
+        """
+        Parse a tool call from the agent's response text. The expected format is a JSON object with "tool" and "args" keys, optionally wrapped in markdown code fences.
+
+        Args:
+            self (BaseAgent): The instance of the BaseAgent class.
+            text (str): The text to parse.
+
+        Returns:
+            dict | None: The parsed tool call, or None if the text is not a valid tool call.
+        """        
+        
         if not text:
             return None
 

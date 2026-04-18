@@ -4,13 +4,33 @@ from typing import Callable
 MAX_WORDS_PER_BULLET = 22
 RETRY_INPUT_CHAR_LIMIT = 6000
 
-def _clean_text_fragment(text: str) -> str:
+def _clean_text_fragment(text : str) -> str:
+    """
+    Clean a text fragment by removing source labels, reference markers, and excessive whitespace.
+
+    Args:
+        text (str): The text fragment to clean.
+
+    Returns:
+        str: The cleaned text fragment.
+    """    
+    
     cleaned = re.sub(r'(?i)^source\s+\d+:\s*', '', text).strip()
     cleaned = re.sub(r'\[[0-9,\s]+\]', '', cleaned)
     cleaned = re.sub(r'\s+', ' ', cleaned)
     return cleaned.strip(' -')
 
-def _is_meta_line(text: str) -> bool:
+def _is_meta_line(text : str) -> bool:
+    """
+    Check if a text line is a meta line (e.g., summary, key points).
+
+    Args:
+        text (str): The text line to check.
+
+    Returns:
+        bool: True if the line is a meta line, False otherwise.
+    """    
+    
     line = text.strip().strip('-*• ').strip()
     if not line:
         return True
@@ -26,7 +46,17 @@ def _is_meta_line(text: str) -> bool:
 
     return False
 
-def _is_source_commentary_line(text: str) -> bool:
+def _is_source_commentary_line(text : str) -> bool:
+    """
+    Check if a text line is a source commentary line (e.g., mentions sources or articles).
+
+    Args:
+        text (str): The text line to check.
+
+    Returns:
+        bool: True if the line is a source commentary line, False otherwise.
+    """    
+    
     line = text.lower()
     patterns = (
         r'\b(this|that|another|the)\s+(source|article|biography|book|page)\b',
@@ -37,13 +67,34 @@ def _is_source_commentary_line(text: str) -> bool:
     )
     return any(re.search(pattern, line) for pattern in patterns)
 
-def _clip_words(text: str, max_words: int) -> str:
+def _clip_words(text : str, max_words : int) -> str:
+    """
+    Clip a text fragment to a maximum number of words, adding an ellipsis if it exceeds the limit.
+
+    Args:
+        text (str): The text fragment to clip.
+        max_words (int): The maximum number of words to include.
+
+    Returns:
+        str: The clipped text fragment.
+    """    
+    
     words = text.split()
     if len(words) <= max_words:
         return text
     return ' '.join(words[:max_words]).rstrip('.,;:') + '...'
 
-def _extract_candidate_sentences(text: str) -> list[str]:
+def _extract_candidate_sentences(text : str) -> list[str]:
+    """
+    Extract candidate sentences from a text fragment by splitting on punctuation and newlines, while filtering out short or meta lines.
+
+    Args:
+        text (str): The text fragment to process.
+
+    Returns:
+        list[str]: A list of candidate sentences.
+    """    
+    
     candidates = []
     parts = re.split(r'(?<=[.!?])\s+|\n+', text.strip())
     for part in parts:
@@ -55,14 +106,35 @@ def _extract_candidate_sentences(text: str) -> list[str]:
         candidates.append(cleaned)
     return candidates
 
-def _normalise_similarity_tokens(text: str) -> set[str]:
+def _normalise_similarity_tokens(text : str) -> set[str]:
+    """
+    Normalise the tokens in a text string for similarity comparison.
+
+    Args:
+        text (str): The text string to normalise.
+
+    Returns:
+        set[str]: A set of normalised tokens.
+    """
+    
     return {
         token
         for token in re.findall(r"[a-zA-Z0-9']+", text.lower())
         if len(token) > 2
     }
 
-def _is_similar_sentence(left: str, right: str) -> bool:
+def _is_similar_sentence(left : str, right : str) -> bool:
+    """
+    Determine if two sentences are similar based on cleaned text and token overlap.
+
+    Args:
+        left (str): The first sentence to compare.
+        right (str): The second sentence to compare.
+
+    Returns:
+        bool: True if the sentences are similar, False otherwise.
+    """    
+    
     left_clean = re.sub(r'[^a-z0-9 ]', '', left.lower()).strip()
     right_clean = re.sub(r'[^a-z0-9 ]', '', right.lower()).strip()
     if not left_clean or not right_clean:
@@ -81,7 +153,18 @@ def _is_similar_sentence(left: str, right: str) -> bool:
     overlap = len(left_tokens & right_tokens) / min(len(left_tokens), len(right_tokens))
     return overlap >= 0.8
 
-def _trim_text_for_retry(text: str, max_chars: int = RETRY_INPUT_CHAR_LIMIT) -> str:
+def _trim_text_for_retry(text : str, max_chars : int = RETRY_INPUT_CHAR_LIMIT) -> str:
+    """
+    Trim a text string to a maximum number of characters, attempting to preserve whole sentences and adding a truncation notice if necessary.
+
+    Args:
+        text (str): The text string to trim.
+        max_chars (int, optional): The maximum number of characters to include. Defaults to RETRY_INPUT_CHAR_LIMIT.
+
+    Returns:
+        str: The trimmed text string.
+    """    
+    
     stripped = text.strip()
     if len(stripped) <= max_chars:
         return stripped
@@ -93,8 +176,18 @@ def _trim_text_for_retry(text: str, max_chars: int = RETRY_INPUT_CHAR_LIMIT) -> 
 
     return clipped.strip() + '\n\n[truncated for faster summarisation]'
 
-def _fallback_summary(text: str, max_sentences: int) -> str:
-    """Build a deterministic fallback summary if the model call fails."""
+def _fallback_summary(text : str, max_sentences : int) -> str:
+    """
+    Generate a fallback summary by extracting candidate sentences and normalising them into bullet points, ensuring a concise output even when the LLM summarisation fails.
+
+    Args:
+        text (str): The text to summarise.
+        max_sentences (int): The maximum number of sentences to include in the summary.
+
+    Returns:
+        str: The fallback summary.
+    """    
+    
     lines: list[str] = []
     seen: set[str] = set()
 
@@ -109,12 +202,33 @@ def _fallback_summary(text: str, max_sentences: int) -> str:
 
     return '\n'.join(f'- {line}' for line in lines)
 
-def _extract_chat_content(response: dict | None) -> str:
+def _extract_chat_content(response : dict | None) -> str:
+    """
+    Extract the content from an Ollama chat response, handling cases where the response may be None or not in the expected format.
+
+    Args:
+        response (dict | None): The Ollama chat response to extract content from.
+
+    Returns:
+        str: The extracted content, or an empty string if the response is invalid.
+    """    
+    
     if not response or not isinstance(response, dict):
         return ''
     return str(response.get('message', {}).get('content', '')).strip()
 
-def _normalise_to_bullets(text: str, max_sentences: int) -> str:
+def _normalise_to_bullets(text : str, max_sentences : int) -> str:
+    """
+    Normalise a text string into bullet points by extracting lines, filtering out meta and commentary lines, and ensuring uniqueness and brevity.
+
+    Args:
+        text (str): The text string to normalise.
+        max_sentences (int): The maximum number of sentences to include in the summary.
+
+    Returns:
+        str: The normalised text as bullet points.
+    """    
+    
     if not text or not text.strip():
         return ''
 
@@ -171,6 +285,17 @@ def _normalise_to_bullets(text: str, max_sentences: int) -> str:
     return '\n'.join(f'- {line}' for line in unique)
 
 def _needs_compression_retry(text: str, max_sentences: int) -> bool:
+    """
+    Determine if a retry with compression is needed based on the presence of bullet markers and the overall word count, which can indicate that the initial summary is too verbose or not properly formatted.
+
+    Args:
+        text (str): The text string to evaluate.
+        max_sentences (int): The maximum number of sentences to include in the summary.
+
+    Returns:
+        bool: True if a retry with compression is needed, False otherwise.
+    """    
+    
     if not text or not text.strip():
         return True
 
@@ -187,12 +312,27 @@ def _needs_compression_retry(text: str, max_sentences: int) -> bool:
     return False
 
 def summarise_text(
-    text: str,
-    chat: Callable[[list[dict]], dict | None],
-    max_sentences: int = 5,
-    system_prompt: str | None = None,
+    text : str,
+    chat : Callable[[list[dict]], dict | None],
+    max_sentences : int = 5,
+    system_prompt : str | None = None,
 ) -> str:
-    """Summarise raw text by sending it directly to the configured LLM chat function."""
+    """
+    Summarise a text string into concise bullet points using an Ollama chat function, with fallback mechanisms to ensure a summary is produced even if the LLM fails to generate a suitable output.
+
+    Args:
+        text (str): The text to summarise.
+        chat (Callable[[list[dict]], dict  |  None]): The chat function to use for summarisation.
+        max_sentences (int, optional): The maximum number of sentences to include in the summary. Defaults to 5.
+        system_prompt (str | None, optional): The system prompt to use for the chat function. Defaults to None.
+
+    Raises:
+        TypeError: If the chat function is not callable.
+
+    Returns:
+        str: The summarised text in bullet point format.
+    """    
+    
     if not text or not text.strip():
         return ''
     if not callable(chat):

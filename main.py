@@ -1,6 +1,11 @@
 from orchestrator import ResearchOrchestrator
 
-def main():
+def main() -> None:
+    """
+    Main function to run the Research Assistant application.
+    It initializes the ResearchOrchestrator, prompts the user for research topics, and displays the generated reports.
+    """    
+    
     orchestrator = ResearchOrchestrator()
 
     print('=== Research Assistant ===')

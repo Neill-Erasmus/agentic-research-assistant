@@ -1,7 +1,6 @@
 import re
 from typing import Callable
 
-
 ABSOLUTE_CLAIM_PATTERN = re.compile(
     r'\b(always|never|everyone|nobody|universally|guaranteed|guarantees|proves?|undeniably)\b',
     flags=re.IGNORECASE,
@@ -11,14 +10,32 @@ NUMERIC_CLAIM_PATTERN = re.compile(
     flags=re.IGNORECASE,
 )
 
+def _extract_chat_content(response : dict | None) -> str:
+    """
+    Extract the content of the chat response.
 
-def _extract_chat_content(response: dict | None) -> str:
+    Args:
+        response (dict | None): The chat response dictionary.
+
+    Returns:
+        str: The extracted content from the chat response, or an empty string if the response is invalid.
+    """    
+    
     if not response or not isinstance(response, dict):
         return ''
     return str(response.get('message', {}).get('content', '')).strip()
 
+def _normalise_bullets(text : str) -> str:
+    """
+    Normalise the output text into a consistent bullet-point format.
 
-def _normalise_bullets(text: str) -> str:
+    Args:
+        text (str): The text to normalise.
+
+    Returns:
+        str: The normalised text in bullet point format.
+    """    
+    
     if not text or not text.strip():
         return ''
 
@@ -40,8 +57,17 @@ def _normalise_bullets(text: str) -> str:
     sentence_chunks = [chunk.strip() for chunk in re.split(r'(?<=[.!?])\s+', text) if chunk.strip()]
     return '\n'.join(f'- {chunk}' for chunk in sentence_chunks)
 
+def _fallback_fact_check(summary : str) -> str:
+    """
+    Perform heuristic checks on the summary text to identify potential concerns about false claims, such as absolute wording or numeric claims, when a more sophisticated chat-based fact-check is unavailable.
 
-def _fallback_fact_check(summary: str) -> str:
+    Args:
+        summary (str): The summary text to check.
+
+    Returns:
+        str: A list of concerns identified through heuristic checks.
+    """    
+    
     if not summary or not summary.strip():
         return '- No summary provided for fact checking.'
 
@@ -62,13 +88,26 @@ def _fallback_fact_check(summary: str) -> str:
 
     return '\n'.join(f'- {concern}' for concern in concerns)
 
-
 def fact_check_summary(
-    summary: str,
-    chat: Callable[[list[dict]], dict | None],
-    system_prompt: str | None = None,
+    summary : str,
+    chat : Callable[[list[dict]], dict | None],
+    system_prompt : str | None = None,
 ) -> str:
-    """Ask the model to identify likely false claims in a generated summary."""
+    """
+    Assess the provided summary text for likely false claims using a combination of a chat-based model and heuristic checks. The function first attempts to use the provided chat function to get an assessment based on the system prompt. If the chat response is unavailable or does not yield a clear assessment, it falls back to heuristic checks that look for absolute wording and numeric claims as potential red flags.
+
+    Args:
+        summary (str): The summary text to check.
+        chat (Callable[[list[dict]], dict  |  None]): The chat function to use for fact-checking.
+        system_prompt (str | None, optional): The system prompt for the chat function. Defaults to None.
+
+    Raises:
+        TypeError: If the chat function is not callable.
+
+    Returns:
+        str: The fact-checking results in bullet point format.
+    """    
+    
     if not summary or not summary.strip():
         return '- No summary provided for fact checking.'
     if not callable(chat):
