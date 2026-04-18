@@ -9,7 +9,7 @@ class FactCheckerAgent(BaseAgent):
         BaseAgent (_type_): The base agent class that provides common functionality for all agents, including the chat interface.
     """    
     
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the FactCheckerAgent with a specific system prompt that defines its role and behavior.
         The agent is designed to review summaries and identify potential factual concerns without providing explanations or justifications for its findings.
@@ -24,11 +24,12 @@ class FactCheckerAgent(BaseAgent):
             tools=[]
         )
 
-    def run(self, summary: str) -> str:
+    def run(self : FactCheckerAgent, summary: str) -> str:
         """
         Review a summary and identify potential factual concerns.
 
         Args:
+            self (FactCheckerAgent): The instance of the FactCheckerAgent class.
             summary (str): The summary to be fact-checked.
 
         Returns:
