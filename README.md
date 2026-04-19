@@ -1,65 +1,69 @@
 # Multi-Agent Research Assistant
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
-[![Architecture](https://img.shields.io/badge/Architecture-Multi--Agent-0A7E8C)](#architecture)
-[![LLM Backend](https://img.shields.io/badge/LLM-Ollama%20-F97316)](https://ollama.com/)
-[![Search Sources](https://img.shields.io/badge/Search-Wikipedia%20%2B%20DuckDuckGo-0B7285)](#how-it-works)
+[![Docker Ready](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![LLM Backend](https://img.shields.io/badge/LLM-Ollama-F97316)](https://ollama.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A modular, agent-based research assistant that turns a user query into a structured report with:
+A modular, agent-based CLI assistant that turns a research topic into a structured report with:
 
-- Web Search Results
-- Concise Bullet-Point Summaries
-- Lightweight Fact-Checking
-- APA-style Citations
+- Web search results from multiple sources
+- Concise bullet-point summaries
+- Lightweight fact-checking cues
+- APA-style citations
 
-The project is designed to run with a local LLM via Ollama, but it degrades gracefully when Ollama is unavailable.
+The system is designed for a local LLM workflow via Ollama and degrades gracefully with deterministic fallbacks when Ollama is unavailable.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Project Structure](#project-structure)
-- [Requirements](#requirements)
-- [Quick Start](#quick-start)
+- [Prerequisites](#prerequisites)
+- [Quick Start (Local)](#quick-start-local)
+- [Run with Docker](#run-with-docker)
 - [Configuration](#configuration)
 - [Usage](#usage)
-- [How It Works](#how-it-works)
+- [How the Pipeline Works](#how-the-pipeline-works)
 - [Output Format](#output-format)
-- [Error Handling and Fallbacks](#error-handling-and-fallbacks)
+- [Reliability and Fallbacks](#reliability-and-fallbacks)
+- [Troubleshooting](#troubleshooting)
 - [License](#license)
 
 ## Overview
 
-This assistant orchestrates specialized agents to answer research queries end-to-end.
+`ResearchOrchestrator` coordinates specialized agents to process a query end-to-end:
 
-1. Search for relevant sources.
-2. Summarize key factual points.
-3. Flag potentially suspicious claims.
-4. Format source citations.
+1. Finds relevant sources.
+2. Summarizes key facts.
+3. Flags potentially risky claims.
+4. Formats APA-style citations.
 
-It supports follow-up questions that reference previous search results, such as "expand the first result" or "use source 2" during the same runtime session.
+The orchestrator also stores in-process session memory, so follow-up prompts such as "expand the first result" can reference previous outputs during the same runtime.
 
 ## Key Features
 
-- Multi-agent pipeline orchestrated by a central controller.
-- Planner-driven execution order with dependency enforcement.
-- Multi-source search using:
+- Multi-agent orchestration with planner-driven execution order.
+- Dependency-aware pipeline enforcement (for example, citation generation when search is used).
+- Multi-source web retrieval:
   - Wikipedia API
   - DuckDuckGo Instant Answer API
   - DuckDuckGo HTML results parsing
-- Source deduplication, relevance ranking, and source-diversity balancing.
-- LLM-backed summarization with deterministic fallback summarization.
-- LLM-backed fact-checking with heuristic fallback checks.
-- APA-style citation formatting with author inference from metadata/domain.
-- Session memory for in-process follow-up questions.
+- Deduplication, relevance ranking, and source-diversity balancing.
+- LLM-backed summarization and fact-checking with deterministic fallback behavior.
+- APA citation formatting with author inference from metadata and URL domains.
+- CLI-based interactive workflow with follow-up query support.
 
 ## Project Structure
 
 ```text
+.
+|-- Dockerfile
+|-- LICENSE
+|-- README.md
 |-- main.py
 |-- orchestrator.py
-|-- README
+|-- requirements.txt
 |-- agents/
 |   |-- ___init__.py
 |   |-- base_agent.py
@@ -75,18 +79,21 @@ It supports follow-up questions that reference previous search results, such as 
     `-- web_search.py
 ```
 
-## Requirements
+## Prerequisites
 
 - Python 3.10+
 - pip
-- Internet access (for web search)
+- Internet access (for web search sources)
+- Optional but recommended: Ollama running locally for stronger summaries/fact-check output
+- Optional: Docker (if running containerized)
 
-## Quick Start
+## Quick Start (Local)
 
-### 1) Clone and enter the project directory
+### 1) Clone the repository
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/Neill-Erasmus/Multi-Agent-Research-Assistant.git
+
 cd Multi-Agent-Research-Assistant
 ```
 
@@ -99,28 +106,35 @@ python -m venv venv
 venv\Scripts\activate
 ```
 
+macOS/Linux:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
 ### 3) Install dependencies
 
 ```bash
-pip install requests
+pip install -r requirements.txt
 ```
 
-### 4) Install and run Ollama
+### 4) Start Ollama and pull model
 
 ```bash
 ollama serve
 ollama pull llama3
 ```
 
-If Ollama is not running, the system still executes with fallback behaviors for summarization and fact-checking.
+If Ollama is unavailable, the assistant still runs with fallback summarization and fact-check heuristics.
 
-### 5) Run the assistant
+### 5) Run the application
 
 ```bash
 python main.py
 ```
 
-You should see:
+Expected startup:
 
 ```text
 === Research Assistant ===
@@ -128,18 +142,50 @@ Type a research topic and press Enter.
 Type "quit" to exit.
 ```
 
+## Run with Docker
+
+The Docker image packages this application only. Ollama should run separately (typically on the host machine or another service).
+
+### 1) Build image
+
+```bash
+docker build -t multi-agent-research-assistant .
+```
+
+### 2) Run container (Docker Desktop on Windows/macOS)
+
+Use `host.docker.internal` so the container can reach host Ollama:
+
+```bash
+docker run --rm -it -e OLLAMA_URL=http://host.docker.internal:11434/api/chat -e OLLAMA_MODEL=llama3 multi-agent-research-assistant
+```
+
+### 3) Run container (Linux)
+
+```bash
+docker run --rm -it --add-host=host.docker.internal:host-gateway -e OLLAMA_URL=http://host.docker.internal:11434/api/chat -e OLLAMA_MODEL=llama3 multi-agent-research-assistant
+```
+
+### 4) Run without Ollama
+
+```bash
+docker run --rm -it multi-agent-research-assistant
+```
+
+This still works, but summary and fact-check quality may be lower due to fallback mode.
+
 ## Configuration
 
 Configuration is environment-variable driven.
 
 | Variable | Default | Description |
 |---|---|---|
-| OLLAMA_URL | http://localhost:11434/api/chat | Ollama chat endpoint |
-| OLLAMA_MODEL | llama3 | Model name sent to Ollama |
-| OLLAMA_TIMEOUT_SECONDS | 180 | Request timeout in seconds (minimum enforced: 15) |
-| OLLAMA_TIMEOUT | unset | Backward-compatible timeout fallback if OLLAMA_TIMEOUT_SECONDS is not set |
+| `OLLAMA_URL` | `http://localhost:11434/api/chat` | Ollama chat endpoint |
+| `OLLAMA_MODEL` | `llama3` | Model name sent to Ollama |
+| `OLLAMA_TIMEOUT_SECONDS` | `180` | Request timeout in seconds (minimum enforced: 15) |
+| `OLLAMA_TIMEOUT` | `unset` | Backward-compatible timeout fallback when `OLLAMA_TIMEOUT_SECONDS` is not set |
 
-### Example (Windows CMD)
+Example (Windows CMD):
 
 ```bat
 set OLLAMA_URL=http://localhost:11434/api/chat
@@ -158,41 +204,40 @@ Research topic: Albert Einstein main works
 
 Useful prompt patterns:
 
-- Broad topic: "Research renewable energy storage trends"
-- Person-centric: "Who was Ada Lovelace and what were her main works?"
-- Follow-up in same session: "Expand on the second result"
-- Follow-up by index: "Use source number 1 and summarize again"
+- Broad topic: `Research renewable energy storage trends`
+- Person-centric: `Who was Ada Lovelace and what were her main works?`
+- Follow-up in same session: `Expand on the second result`
+- Follow-up by index: `Use source number 1 and summarize again`
 
-
-## How It Works
+## How the Pipeline Works
 
 ### Orchestrator
 
-The orchestrator coordinates the entire flow, including planning, dependency enforcement, session memory, and report assembly.
+`ResearchOrchestrator` handles planning, dependency enforcement, session memory, and final report assembly.
 
 ### Agent Responsibilities
 
-| Agent | Role | Input | Output |
+| Agent | Responsibility | Input | Output |
 |---|---|---|---|
-| SearchAgent | Query generation + web retrieval | User query | List of search results |
-| SummariserAgent | Bullet summary generation | Combined source snippets | Bullet-point summary |
-| FactCheckerAgent | Claim risk review | Summary text | Concern bullets |
-| CitationAgent | APA citation formatting | Search results | Citation list |
+| `SearchAgent` | Query normalization + web retrieval | User query | Search result list |
+| `SummariserAgent` | Bullet summary generation | Aggregated snippets | Concise bullets |
+| `FactCheckerAgent` | Risk-oriented claim review | Summary text | Concern bullets |
+| `CitationAgent` | APA citation formatting | Search results | Citation list |
 
 ### Tool Layer
 
-- web_search(query, max_results=8)
-  - Aggregates multiple sources, deduplicates URLs, ranks relevance, enforces source diversity.
-- summarise_text(text, chat, max_sentences=5, ...)
-  - LLM summarization with strict bullet normalization and deterministic fallback extraction.
-- fact_check_summary(summary, chat, ...)
-  - LLM assessment with heuristic fallback for absolute/numeric claim risk.
-- format_citation(url, title, author=None)
-  - APA-style citation formatting with metadata/domain-based author resolution.
+- `web_search(query, max_results=8)`
+  - Aggregates multiple providers, deduplicates, relevance-ranks, and balances source diversity.
+- `summarise_text(text, chat, max_sentences=...)`
+  - Uses LLM with strict bullet normalization and deterministic fallback extraction.
+- `fact_check_summary(summary, chat, ...)`
+  - Uses LLM when available and heuristic checks for absolute/numeric claim risk otherwise.
+- `format_citation(url, title, author=None)`
+  - Formats APA-like references with inferred author/org fallbacks.
 
 ## Output Format
 
-The final output is a structured plain-text report:
+The CLI returns a structured plain-text report:
 
 ```text
 RESEARCH REPORT
@@ -218,18 +263,32 @@ SOURCES
 ...
 ```
 
-## Error Handling and Fallbacks
+## Reliability and Fallbacks
 
-- Planner output parsing errors trigger default pipeline execution.
-- Search failures are caught per source; remaining sources are still attempted.
-- Summarization:
-  - LLM path first
-  - compression retry if output quality is poor
+- Planner parse failures revert to the default safe pipeline.
+- Source-level search failures are handled independently to keep other sources available.
+- Summarization uses:
+  - primary LLM call
+  - compression retry when output quality is poor
   - deterministic extraction fallback when LLM is unavailable
-- Fact-checking:
-  - LLM path first
-  - heuristic checks when model output is missing/unavailable
-- Step-level exceptions are handled so the CLI returns readable errors instead of hard crashes.
+- Fact checking uses:
+  - primary LLM call
+  - heuristic fallback checks if model output is missing/unavailable
+- Step-level exceptions are handled to avoid hard CLI crashes and return readable errors.
+
+## Troubleshooting
+
+- Ollama connection errors from container:
+  - Ensure `OLLAMA_URL` points to `http://host.docker.internal:11434/api/chat` when using Docker Desktop.
+  - Ensure Ollama is running on the host (`ollama serve`).
+- Empty or weak search output:
+  - Confirm internet connectivity.
+  - Try a clearer query phrase with specific keywords.
+- Slow LLM responses:
+  - Increase `OLLAMA_TIMEOUT_SECONDS`.
+  - Try a smaller/faster local model.
+- No citations generated:
+  - Ensure search returns results first; citation generation depends on search output.
 
 ## License
 
