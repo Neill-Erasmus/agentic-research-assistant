@@ -1,4 +1,4 @@
-# Multi-Agent Research Assistant
+# Agentic Research Assistant
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![Docker Ready](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
@@ -92,7 +92,7 @@ The orchestrator also stores in-process session memory, so follow-up prompts suc
 ### 1) Clone the repository
 
 ```bash
-git clone https://github.com/Neill-Erasmus/Multi-Agent-Research-Assistant.git
+git clone https://github.com/Neill-Erasmus/agentic-research-assistant.git
 
 cd Multi-Agent-Research-Assistant
 ```
