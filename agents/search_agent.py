@@ -5,7 +5,12 @@ from tools.web_search import web_search
 TOOLS = [
     {
         'name': 'web_search',
-        'description': 'Search the web for information on a topic.',
+        'description': 'Search the web for information on a topic using DuckDuckGo and Wikipedia.',
+        'params': '{"query": "string"}'
+    },
+    {
+        'name': 'tavily_search',
+        'description': 'Search the web using Tavily (requires TAVILY_API_KEY). Provides high-relevance results optimised for AI agents.',
         'params': '{"query": "string"}'
     }
 ]
@@ -119,7 +124,7 @@ class SearchAgent(BaseAgent):
             reply = response['message']['content']
             tool_call = self._parse_tool_call(reply)
 
-            if tool_call and tool_call['tool'] == 'web_search':
+            if tool_call and tool_call['tool'] in ('web_search', 'tavily_search'):
                 args = tool_call.get('args', {})
                 query = args.get('query', topic)
                 max_results = args.get('max_results', 8)
@@ -129,8 +134,9 @@ class SearchAgent(BaseAgent):
                 except (TypeError, ValueError):
                     max_results = 8
 
-                print(f' [SearchAgent] Calling web_search("{query}")')
-                results = web_search(query, max_results=max_results)
+                provider = 'tavily' if tool_call['tool'] == 'tavily_search' else 'auto'
+                print(f' [SearchAgent] Calling {tool_call["tool"]}("{query}")')
+                results = web_search(query, max_results=max_results, provider=provider)
                 if results:
                     return results
                 print(' [SearchAgent] Tool call returned no results. Falling back to direct search.')

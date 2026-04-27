@@ -1,3 +1,4 @@
+import os
 import requests
 import re
 from html import unescape
@@ -384,23 +385,81 @@ def _apply_source_diversity(items : list[dict], max_results : int) -> list[dict]
 
     return merged[:max_results]
 
-def web_search(query : str, max_results : int = 8) -> list[dict]:
+def _search_tavily(query : str, max_results : int) -> list[dict]:
     """
-    Perform a web search for the given query using multiple sources (Wikipedia API, DuckDuckGo Instant Answer API, and DuckDuckGo HTML scraping) and return a list of relevant results with source diversity.
+    Search using the Tavily API and return results in the standard format.
+
+    Args:
+        query (str): The search query.
+        max_results (int): The maximum number of results to return.
+
+    Returns:
+        list[dict]: A list of search results with title, url, snippet, and source.
+    """
+
+    from tavily import TavilyClient
+
+    client = TavilyClient()
+    response = client.search(
+        query=query,
+        max_results=max_results,
+        search_depth="basic",
+        topic="general",
+    )
+
+    results = []
+    for item in response.get("results", []):
+        title = (item.get("title") or "").strip()
+        url = (item.get("url") or "").strip()
+        snippet = (item.get("content") or "").strip()
+        if not url:
+            continue
+        results.append({
+            "title": title or url,
+            "url": url,
+            "snippet": snippet[:320] if snippet else "",
+            "source": "tavily",
+        })
+    return results
+
+def web_search(query : str, max_results : int = 8, provider : str = 'auto') -> list[dict]:
+    """
+    Perform a web search for the given query and return a list of relevant results.
+
+    When provider is 'tavily' or 'auto' with TAVILY_API_KEY set, Tavily is used as the
+    primary search source. Falls back to DuckDuckGo/Wikipedia if Tavily returns no results
+    or if the API key is absent.
 
     Args:
         query (str): The search query.
         max_results (int, optional): The maximum number of results to return. Defaults to 8.
+        provider (str, optional): Search provider selection — 'tavily', 'duckduckgo', or
+            'auto' (default). When 'auto', Tavily is used if TAVILY_API_KEY is set.
 
     Returns:
         list[dict]: The list of search results with source diversity applied.
-    """    
-    
+    """
+
     if not query or not query.strip():
         return []
 
     max_results = max(1, max_results)
     query = query.strip()
+
+    use_tavily = (
+        provider == 'tavily'
+        or (provider == 'auto' and os.environ.get('TAVILY_API_KEY'))
+    )
+
+    if use_tavily:
+        try:
+            results = _search_tavily(query, max_results=max_results)
+            if results:
+                return results[:max_results]
+            print(f' [web_search] Tavily returned no results for "{query}", falling back to DuckDuckGo/Wikipedia.')
+        except Exception as exc:
+            print(f' [web_search] Tavily error for query "{query}": {exc}')
+
     combined: list[dict] = []
     seen_urls: set[str] = set()
 
