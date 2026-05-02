@@ -14,8 +14,27 @@ A modular, agent-based CLI assistant that turns a research topic into a structur
 
 The system is designed for a local LLM workflow via Ollama and degrades gracefully with deterministic fallbacks when Ollama is unavailable.
 
+## At a Glance
+
+**What it does:** Automates research workflows by orchestrating multiple AI agents that search the web, summarize findings, validate claims, and generate citations—all from a single command-line query.
+
+**Why it matters:**
+- **Production-ready**: Graceful fallbacks ensure reliability even when LLM services fail
+- **Modular architecture**: Clean agent-based design makes it easy to extend with new research capabilities
+- **Citation-aware**: Automatically generates APA-formatted references, ideal for academic and professional use
+- **Local-first**: Leverages Ollama for privacy-preserving local LLM inference
+- **Zero vendor lock-in**: Works without external APIs when fallback mode is needed
+
+**Core technology stack:**
+- Python 3.10+ with type hints
+- Multi-source web aggregation (Wikipedia, DuckDuckGo)
+- Ollama integration for local LLM inference
+- Docker containerization for reproducible deployments
+- Session-aware orchestration for contextual follow-ups
+
 ## Table of Contents
 
+- [At a Glance](#at-a-glance)
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Project Structure](#project-structure)
@@ -28,6 +47,8 @@ The system is designed for a local LLM workflow via Ollama and degrades graceful
 - [Output Format](#output-format)
 - [Reliability and Fallbacks](#reliability-and-fallbacks)
 - [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [Citation](#citation)
 - [License](#license)
 
 ## Overview
@@ -294,3 +315,28 @@ SOURCES
 
 This project is licensed under the MIT License.
 See [LICENSE](LICENSE) for full text.
+
+## Contributing
+
+We welcome contributions from developers, researchers, and enthusiasts! Whether you'd like to add new agents, improve search strategies, or enhance documentation, please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
+
+- Development setup and workflow
+- Code standards and best practices
+- Testing procedures
+- Submitting pull requests
+- Reporting bugs and suggesting features
+
+## Citation
+
+If you use this project in your research or publication, please cite it using the metadata in [CITATION.cff](CITATION.cff). GitHub automatically recognizes and displays citation information from this file.
+
+**BibTeX format:**
+```bibtex
+@software{erasmus2026agentic,
+  title={Agentic Research Assistant},
+  author={Erasmus, Neill},
+  url={https://github.com/Neill-Erasmus/agentic-research-assistant},
+  year={2026},
+  license={MIT}
+}
+```
