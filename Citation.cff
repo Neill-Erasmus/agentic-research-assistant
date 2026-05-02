@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+type: software
+title: "Agentic Research Assistant"
+version: "1.0.0"
+date-released: "2026-05-02"
+authors:
+  - family-names: "Erasmus"
+    given-names: "Neill"
+    affiliation: "Nelson Mandela University"
+repository-code: "https://github.com/Neill-Erasmus/agentic-research-assistant"
+url: "https://github.com/Neill-Erasmus/agentic-research-assistant"
+repository: "https://github.com/Neill-Erasmus/agentic-research-assistant"
+license: "MIT"
+keywords:
+  - "research"
+  - "agent"
+  - "llm"
+  - "automation"
+  - "web-search"
+  - "fact-checking"
+  - "citations"
+description: "A modular, agent-based CLI assistant that turns a research topic into a structured report with web search results, summaries, fact-checking, and APA-style citations."
